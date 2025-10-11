@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1010966773977",
+    "project_id": "job-alert-63162",
+    "storage_bucket": "job-alert-63162.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1010966773977:android:5b28fadcb800d7b2f13ec8",
+        "android_client_info": {
+          "package_name": "com.example.jobalert"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQWYSJIFdMgpigEsGkzuT8ev-IskrA6Qk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
