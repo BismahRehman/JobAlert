@@ -11,11 +11,10 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()       // ✅ this allows Firebase libraries
+        google()
         mavenCentral()
     }
 }

@@ -1,13 +1,13 @@
 package com.example.jobalert
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,12 +15,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.jobalert.ui.theme.JobAlertTheme
+import com.google.firebase.firestore.FirebaseFirestore
 
+// -------------------- MAIN USER ACTIVITY --------------------
 class UserActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,21 +104,29 @@ fun BottomNavigationBar(selectedTab: String, onTabSelected: (String) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserHomeScreen() {
+    val firestore = FirebaseFirestore.getInstance()
     var searchTitle by remember { mutableStateOf("") }
     var searchLocation by remember { mutableStateOf("") }
+    var allJobs by remember { mutableStateOf(listOf<JobData>()) }
     var filteredJobs by remember { mutableStateOf(listOf<JobData>()) }
 
-    val jobList = listOf(
-        JobData("Android Developer", "Canyon Games", "Lahore"),
-        JobData("Backend Engineer", "TechLogix", "Karachi"),
-        JobData("UI/UX Designer", "Systems Ltd", "Islamabad"),
-        JobData("AI Intern", "King Revolution Inc", "Lahore"),
-        JobData("Frontend Developer", "NetSol", "Lahore"),
-        JobData("ML Engineer", "VisionSoft", "Karachi")
-    )
-
+    // 🔹 Load jobs from Firestore (real-time)
     LaunchedEffect(Unit) {
-        filteredJobs = jobList
+        firestore.collection("jobs").addSnapshotListener { snapshot, e ->
+            if (e == null && snapshot != null) {
+                val jobs = snapshot.documents.mapNotNull { doc ->
+                    JobData(
+                        title = doc.getString("position") ?: "",
+                        company = doc.getString("companyName") ?: "",
+                        location = doc.getString("location") ?: ""
+                    )
+                }
+
+                // If no jobs in Firestore, show some demo ones
+                allJobs = if (jobs.isEmpty()) getSampleJobs() else jobs
+                filteredJobs = allJobs
+            }
+        }
     }
 
     Column(
@@ -145,7 +156,7 @@ fun UserHomeScreen() {
 
         Button(
             onClick = {
-                filteredJobs = jobList.filter {
+                filteredJobs = allJobs.filter {
                     (searchTitle.isEmpty() || it.title.contains(searchTitle, ignoreCase = true)) &&
                             (searchLocation.isEmpty() || it.location.contains(searchLocation, ignoreCase = true))
                 }
@@ -177,108 +188,72 @@ fun UserHomeScreen() {
     }
 }
 
-// -------------------- JOB LIST SCREEN --------------------
-@Composable
-fun JobListScreen() {
-    val jobList = listOf(
-        JobData("Data Scientist", "Careem", "Karachi"),
-        JobData("Game Developer", "TenPearls", "Lahore"),
-        JobData("Web Developer", "Systems Ltd", "Islamabad")
-    )
-
-    LazyColumn(modifier = Modifier.padding(16.dp)) {
-        items(jobList) { job ->
-            JobCard(job)
-        }
-    }
-}
-
-// -------------------- PROFILE SCREEN --------------------
-@Composable
-fun ProfileScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Profile Picture
-            Card(
-                shape = CircleShape,
-                elevation = CardDefaults.cardElevation(8.dp),
-                modifier = Modifier.size(100.dp)
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = "Profile",
-                    tint = Color(0xFF1565C0),
-                    modifier = Modifier.fillMaxSize().padding(16.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // User Info Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(6.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Bismah Rehman", fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("bismah@example.com", color = Color.Gray, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Phone: +92 300 1234567", color = Color.Gray, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Location: Lahore, Pakistan", color = Color.Gray, fontSize = 16.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Create Employer Account Button
-            Button(
-                onClick = { println("Create Employer Account Clicked") },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
-                shape = RoundedCornerShape(50),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            ) {
-                Icon(Icons.Default.AccountCircle, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Create Employer Account", fontSize = 16.sp)
-            }
-        }
-    }
-}
-
 // -------------------- JOB CARD --------------------
 @Composable
 fun JobCard(job: JobData) {
+    val context = LocalContext.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-        elevation = CardDefaults.cardElevation(4.dp)
+            .padding(vertical = 6.dp)
+            .clickable {
+                val intent = Intent(context, JobDetailActivity::class.java).apply {
+                    putExtra("title", job.title)
+                    putExtra("company", job.company)
+                    putExtra("location", job.location)
+                }
+                context.startActivity(intent)
+            },
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = job.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Text(text = job.company, fontSize = 15.sp, color = Color.Gray)
-            Text(text = job.location, fontSize = 14.sp, color = Color(0xFF1565C0))
+            Text(job.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(job.company, color = Color.Gray)
+            Text("📍 ${job.location}", color = Color(0xFF1565C0))
         }
     }
 }
 
+// 🔹 Demo jobs for fallback
+fun getSampleJobs() = listOf(
+    JobData("Android Developer", "TechZone", "Lahore"),
+    JobData("AI Engineer", "FutureAI", "Karachi"),
+    JobData("Backend Developer", "NetSol", "Islamabad"),
+    JobData("UI/UX Designer", "System Ltd", "Lahore")
+)
+
+
+// -------------------- JOB DATA MODEL --------------------
 data class JobData(val title: String, val company: String, val location: String)
+
+
+// -------------------- PREVIEWS --------------------
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun PreviewMainScreen() {
+    JobAlertTheme {
+        MainScreen()
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewMainScreen() {
-    JobAlertTheme { MainScreen() }
+fun PreviewUserHomeScreen() {
+    JobAlertTheme {
+        UserHomeScreen()
+    }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewJobCard() {
+    JobAlertTheme {
+        JobCard(
+            JobData("Android Developer", "Canyon Games", "Lahore")
+        )
+    }
+}
+

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Job Alert</string>
+    <string name="title_activity_job_list">JobListActivity</string>
 </resources>
