@@ -55,6 +55,7 @@ fun JobDetailScreen(
         Spacer(modifier = Modifier.height(12.dp))
         Text("Qualifications:", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Text(qualifications, fontSize = 16.sp, modifier = Modifier.padding(top = 4.dp))
+  Text("hi")
     }
 }
 

@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -85,25 +85,70 @@ fun EmployerDashboardScreen() {
         ) {
             Text("Your Posted Jobs", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(16.dp))
+
             if (jobList.isEmpty()) {
                 Text("No jobs posted yet.")
             } else {
                 LazyColumn {
                     items(jobList) { job ->
+                        var showDialog by remember { mutableStateOf(false) }
+
+                        if (showDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showDialog = false },
+                                title = { Text("Delete Job") },
+                                text = { Text("Are you sure you want to delete this job?") },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showDialog = false
+                                            firestore.collection("jobs")
+                                                .whereEqualTo("employerId", userId)
+                                                .whereEqualTo("position", job.position)
+                                                .get()
+                                                .addOnSuccessListener { docs ->
+                                                    for (doc in docs) {
+                                                        firestore.collection("jobs")
+                                                            .document(doc.id)
+                                                            .delete()
+                                                    }
+                                                    jobList = jobList.filter { it != job }
+                                                }
+                                        }
+                                    ) {
+                                        Text(
+                                            "Delete",
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDialog = false }) {
+                                        Text("Cancel")
+                                    }
+                                }
+                            )
+                        }
+
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
-                                .clickable {
-                                    val intent = Intent(context, JobDetailActivity::class.java).apply {
-                                        putExtra("title", job.position)
-                                        putExtra("company", job.companyName)
-                                        putExtra("location", job.location)
-                                        putExtra("requirements", job.requirements)
-                                        putExtra("qualifications", job.qualifications)
+                                .combinedClickable(
+                                    onClick = {
+                                        val intent = Intent(context, JobDetailActivity::class.java).apply {
+                                            putExtra("title", job.position)
+                                            putExtra("company", job.companyName)
+                                            putExtra("location", job.location)
+                                            putExtra("requirements", job.requirements)
+                                            putExtra("qualifications", job.qualifications)
+                                        }
+                                        context.startActivity(intent)
+                                    },
+                                    onLongClick = {
+                                        showDialog = true
                                     }
-                                    context.startActivity(intent)
-                                },
+                                ),
                             elevation = CardDefaults.cardElevation(6.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
